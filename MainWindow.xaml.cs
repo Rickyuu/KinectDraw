@@ -22,7 +22,7 @@ namespace KinectDrawDotsGame
     {
         private KinectSensor kinectDevice;
         private Skeleton[] frameSkeletons;
-        private DotPuzzle puzzle;
+        private Point lastPoint;
 
         public KinectSensor KinectDevice
         {
@@ -60,7 +60,6 @@ namespace KinectDrawDotsGame
         public MainWindow()
         {
             InitializeComponent();
-            puzzle = new DotPuzzle();
 
             this.Loaded += (s, e) =>
             {
@@ -99,16 +98,14 @@ namespace KinectDrawDotsGame
                     frame.CopySkeletonDataTo(this.frameSkeletons);
                     Skeleton skeleton = GetPrimarySkeleton(this.frameSkeletons);
 
-                    Skeleton[] dataSet2 = new Skeleton[this.frameSkeletons.Length];
-                    frame.CopySkeletonDataTo(dataSet2);
-
                     if (skeleton == null)
                     {
                         HandCursorElement.Visibility = Visibility.Collapsed;
                     }
                     else
                     {
-                        Joint primaryHand = GetPrimaryHand(skeleton);
+                        // Joint primaryHand = GetPrimaryHand(skeleton);
+                        Joint primaryHand = skeleton.Joints[JointType.HandRight];
                         TrackHand(primaryHand);
                         TrackPuzzle(primaryHand.Position);
                     }
@@ -185,7 +182,7 @@ namespace KinectDrawDotsGame
                 HandCursorElement.Visibility = Visibility.Visible;
 
 
-                DepthImagePoint point = this.kinectDevice.MapSkeletonPointToDepth(hand.Position, this.kinectDevice.DepthStream.Format);
+                DepthImagePoint point = this.kinectDevice.CoordinateMapper.MapSkeletonPointToDepthPoint(hand.Position, this.kinectDevice.DepthStream.Format);
                 point.X = (int)((point.X * LayoutRoot.ActualWidth / kinectDevice.DepthStream.FrameWidth) - (HandCursorElement.ActualWidth / 2.0));
                 point.Y = (int)((point.Y * LayoutRoot.ActualHeight / kinectDevice.DepthStream.FrameHeight) - (HandCursorElement.ActualHeight / 2.0));
 
@@ -203,36 +200,30 @@ namespace KinectDrawDotsGame
             }
         }
 
-        private void DrawPuzzle(DotPuzzle puzzle)
-        {
-            PuzzleBoardElement.Children.Clear();
-
-            if (puzzle != null)
-            {
-                for (int i = 0; i < puzzle.Dots.Count; i++)
-                {
-                    Grid dotContainer = new Grid();
-                    dotContainer.Width = 50;
-                    dotContainer.Height = 50;
-                    dotContainer.Children.Add(new Ellipse { Fill = Brushes.Gray });
-
-                    //在UI界面上绘制点
-                    Canvas.SetTop(dotContainer, puzzle.Dots[i].Y - (dotContainer.Height / 2));
-                    Canvas.SetLeft(dotContainer, puzzle.Dots[i].X - (dotContainer.Width / 2));
-                    PuzzleBoardElement.Children.Add(dotContainer);
-                }
-            }
-        }
-
         private void TrackPuzzle(SkeletonPoint position)
         {
-                DepthImagePoint point = this.kinectDevice.MapSkeletonPointToDepth(position, kinectDevice.DepthStream.Format);
-                point.X = (int)(point.X * LayoutRoot.ActualWidth / kinectDevice.DepthStream.FrameWidth);
-                point.Y = (int)(point.Y * LayoutRoot.ActualHeight / kinectDevice.DepthStream.FrameHeight);
-                Point handPoint = new Point(point.X, point.Y);
+            DepthImagePoint point = this.kinectDevice.CoordinateMapper.MapSkeletonPointToDepthPoint(position, this.kinectDevice.DepthStream.Format);
+            point.X = (int)(point.X * LayoutRoot.ActualWidth / kinectDevice.DepthStream.FrameWidth);
+            point.Y = (int)(point.Y * LayoutRoot.ActualHeight / kinectDevice.DepthStream.FrameHeight);
+            Point handPoint = new Point(point.X, point.Y);
 
-                this.puzzle.Dots.Add(handPoint);
-                DrawPuzzle(this.puzzle);
+            if (lastPoint == null) 
+            {
+                lastPoint = handPoint;
+                return;
+            }
+
+            Polyline line = new Polyline();
+            line.Stroke = Brushes.SlateGray;
+            line.StrokeThickness = 2;
+            line.FillRule = FillRule.EvenOdd;
+            PointCollection pointCollection = new PointCollection();
+            pointCollection.Add(lastPoint);
+            pointCollection.Add(handPoint);
+            line.Points = pointCollection;
+            PuzzleBoardElement.Children.Add(line);
+
+            lastPoint = handPoint;
         }
 
 
