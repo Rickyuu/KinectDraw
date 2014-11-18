@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,7 @@ namespace KinectDrawDotsGame
         private KinectSensor kinectDevice;
         private Skeleton[] frameSkeletons;
         private Point lastPoint;
+        private String resultFilePos = "d:\\result.txt";
 
         public KinectSensor KinectDevice
         {
@@ -49,6 +51,9 @@ namespace KinectDrawDotsGame
                         {
                             this.kinectDevice.SkeletonStream.Enable();
                             this.frameSkeletons = new Skeleton[this.kinectDevice.SkeletonStream.FrameSkeletonArrayLength];
+                            // delete the last time point info file
+                            if (File.Exists(resultFilePos))
+                                File.Delete(resultFilePos);
                             this.kinectDevice.Start();
                             this.KinectDevice.SkeletonFrameReady += KinectDevice_SkeletonFrameReady;
                         }
@@ -108,6 +113,7 @@ namespace KinectDrawDotsGame
                         Joint primaryHand = skeleton.Joints[JointType.HandRight];
                         TrackHand(primaryHand);
                         TrackPuzzle(primaryHand.Position);
+                        WritePointToFile(primaryHand.Position);
                     }
                 }
             }
@@ -181,7 +187,6 @@ namespace KinectDrawDotsGame
             {
                 HandCursorElement.Visibility = Visibility.Visible;
 
-
                 DepthImagePoint point = this.kinectDevice.CoordinateMapper.MapSkeletonPointToDepthPoint(hand.Position, this.kinectDevice.DepthStream.Format);
                 point.X = (int)((point.X * LayoutRoot.ActualWidth / kinectDevice.DepthStream.FrameWidth) - (HandCursorElement.ActualWidth / 2.0));
                 point.Y = (int)((point.Y * LayoutRoot.ActualHeight / kinectDevice.DepthStream.FrameHeight) - (HandCursorElement.ActualHeight / 2.0));
@@ -226,6 +231,13 @@ namespace KinectDrawDotsGame
             lastPoint = handPoint;
         }
 
+        private void WritePointToFile(SkeletonPoint position)
+        {
+            using (StreamWriter file = new StreamWriter("d:\\result.txt", true))
+            {
+                file.WriteLine(position.X + " " + position.Y + " " + position.Z);
+            }
+        }
 
     }
 }
