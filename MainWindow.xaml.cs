@@ -24,7 +24,8 @@ namespace KinectDrawDotsGame
         private KinectSensor kinectDevice;
         private Skeleton[] frameSkeletons;
         private Point lastPoint;
-        private String resultFilePos = "d:\\result.txt";
+        private String resultFile = "d:\\result.txt";
+        private String depthResultFile = "d:\\depthResult.txt";
 
         public KinectSensor KinectDevice
         {
@@ -52,8 +53,10 @@ namespace KinectDrawDotsGame
                             this.kinectDevice.SkeletonStream.Enable();
                             this.frameSkeletons = new Skeleton[this.kinectDevice.SkeletonStream.FrameSkeletonArrayLength];
                             // delete the last time point info file
-                            if (File.Exists(resultFilePos))
-                                File.Delete(resultFilePos);
+                            if (File.Exists(resultFile))
+                                File.Delete(resultFile);
+                            if (File.Exists(depthResultFile))
+                                File.Delete(depthResultFile);
                             this.kinectDevice.Start();
                             this.KinectDevice.SkeletonFrameReady += KinectDevice_SkeletonFrameReady;
                         }
@@ -109,11 +112,14 @@ namespace KinectDrawDotsGame
                     }
                     else
                     {
-                        // Joint primaryHand = GetPrimaryHand(skeleton);
-                        Joint primaryHand = skeleton.Joints[JointType.HandRight];
-                        TrackHand(primaryHand);
-                        TrackPuzzle(primaryHand.Position);
-                        WritePointToFile(primaryHand.Position);
+                        Joint frontHand = GetFrontHand(skeleton);
+                        if (frontHand == skeleton.Joints[JointType.HandRight]) 
+                        {
+                            TrackHand(frontHand);
+                            TrackPuzzle(frontHand.Position);
+                        }
+                        // Joint primaryHand = skeleton.Joints[JointType.HandRight];
+                        
                     }
                 }
             }
@@ -148,7 +154,7 @@ namespace KinectDrawDotsGame
             return skeleton;
         }
 
-        private static Joint GetPrimaryHand(Skeleton skeleton)
+        private static Joint GetFrontHand(Skeleton skeleton)
         {
             Joint primaryHand = new Joint();
 
@@ -212,6 +218,9 @@ namespace KinectDrawDotsGame
             point.Y = (int)(point.Y * LayoutRoot.ActualHeight / kinectDevice.DepthStream.FrameHeight);
             Point handPoint = new Point(point.X, point.Y);
 
+            WritePointToFile(position);
+            WriteDepthPointToFile(point);
+
             if (lastPoint == null) 
             {
                 lastPoint = handPoint;
@@ -233,9 +242,17 @@ namespace KinectDrawDotsGame
 
         private void WritePointToFile(SkeletonPoint position)
         {
-            using (StreamWriter file = new StreamWriter("d:\\result.txt", true))
+            using (StreamWriter file = new StreamWriter(resultFile, true))
             {
                 file.WriteLine(position.X + " " + position.Y + " " + position.Z);
+            }
+        }
+
+        private void WriteDepthPointToFile(DepthImagePoint depthPoint)
+        {
+            using (StreamWriter file = new StreamWriter(depthResultFile, true))
+            {
+                file.WriteLine(depthPoint.X + " " + depthPoint.Y + " " + depthPoint.Depth);
             }
         }
 
